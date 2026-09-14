@@ -9,7 +9,8 @@ const companyRoutes = require("./routes/companyRoutes");
 const jobRoutes = require("./routes/jobRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
 const savedJobRoutes = require("./routes/savedJobRoutes");
-
+const userRoutes = require("./routes/userRoutes");
+const statsRoutes = require("./routes/statsRoutes");
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -20,7 +21,8 @@ app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
   app.use("/api/jobs", jobRoutes);
     app.use("/api/applications", applicationRoutes);
   app.use("/api/saved-jobs", savedJobRoutes);
-
+  app.use("/api/users", userRoutes);
+  app.use("/api/stats", statsRoutes);
 app.get("/", (req, res) => {
   res.send("JobNest API is running");
 });
