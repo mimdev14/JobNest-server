@@ -57,5 +57,25 @@ router.post("/logout", (req, res) => {
   res.clearCookie("jobnest_token");
   res.json({ success: true });
 });
+router.patch("/profile", authenticateUser, async (req, res) => {
+  try {
+    const { headline, bio, location, phone, skills, portfolioUrl, github, linkedin, resumeUrl } = req.body;
+    const { collections } = require("../config/db");
 
+    await collections.users().updateOne(
+      { authUserId: req.user.authUserId },
+      {
+        $set: {
+          "profile.headline": headline, "profile.bio": bio, "profile.location": location,
+          "profile.phone": phone, "profile.skills": skills, "profile.portfolioUrl": portfolioUrl,
+          "profile.github": github, "profile.linkedin": linkedin, "profile.resumeUrl": resumeUrl,
+          updatedAt: new Date(),
+        },
+      }
+    );
+    res.json({ success: true, message: "Profile updated" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to update profile" });
+  }
+});
 module.exports = router;

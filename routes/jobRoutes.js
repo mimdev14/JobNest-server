@@ -14,7 +14,9 @@ router.get("/", async (req, res) => {
       minSalary, maxSalary, sort = "newest", page = 1, limit = 12,
     } = req.query;
 
+    const { companyId } = req.query;
     const query = { status: "active" };
+    if (companyId) query.companyId = companyId;
     if (keyword) query.$or = [
       { title: { $regex: keyword, $options: "i" } },
       { description: { $regex: keyword, $options: "i" } },
