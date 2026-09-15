@@ -111,5 +111,19 @@ router.post("/:id/notes", authenticateUser, requireRole("RECRUITER"), async (req
     res.status(500).json({ success: false, message: "Failed to add note" });
   }
 });
+// GET /api/applications/pipeline — all applications across recruiter's jobs, for Kanban view
+router.get("/pipeline", authenticateUser, requireRole("RECRUITER"), async (req, res) => {
+  try {
+    const { jobId } = req.query;
+    const query = { recruiterId: req.user.authUserId };
+    if (jobId) query.jobId = jobId;
 
+    const applications = await collections.applications().find(query).sort({ createdAt: -1 }).toArray();
+    const jobs = await collections.jobs().find({ recruiterId: req.user.authUserId }).toArray();
+
+    res.json({ success: true, applications, jobs });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to fetch pipeline" });
+  }
+});
 module.exports = router;
