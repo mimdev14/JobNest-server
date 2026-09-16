@@ -3,6 +3,7 @@ const { ObjectId } = require("mongodb");
 const { collections } = require("../config/db");
 const { authenticateUser } = require("../middleware/authMiddleware");
 const { requireRole } = require("../middleware/roleMiddleware");
+const { PLANS } = require("../config/plans");
 
 const router = express.Router();
 
@@ -11,6 +12,25 @@ router.post("/", authenticateUser, requireRole("SEEKER"), async (req, res) => {
   try {
     const { jobId, coverLetter, resumeUrl } = req.body;
     if (!jobId) return res.status(400).json({ success: false, message: "jobId is required" });
+
+    // --- plan limit check ---
+    const sub = await collections.subscriptions().findOne({ userId: req.user.authUserId, status: "active" });
+    const planKey = sub?.plan || "free";
+    const limit = PLANS.seeker[planKey].limits.applicationsPerMonth;
+
+    if (limit !== Infinity) {
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const countThisMonth = await collections.applications().countDocuments({
+        seekerId: req.user.authUserId,
+        createdAt: { $gte: monthStart },
+      });
+      if (countThisMonth >= limit) {
+        return res.status(403).json({ success: false, message: `You've reached your ${limit} applications/month limit. Upgrade to apply for more.` });
+      }
+    }
+    // --- end plan limit check ---
 
     const job = await collections.jobs().findOne({ _id: new ObjectId(jobId) });
     if (!job || job.status !== "active") {
@@ -51,6 +71,22 @@ router.get("/mine", authenticateUser, requireRole("SEEKER"), async (req, res) =>
   }
 });
 
+// GET /api/applications/pipeline — recruiter's Kanban view
+router.get("/pipeline", authenticateUser, requireRole("RECRUITER"), async (req, res) => {
+  try {
+    const { jobId } = req.query;
+    const query = { recruiterId: req.user.authUserId };
+    if (jobId) query.jobId = jobId;
+
+    const applications = await collections.applications().find(query).sort({ createdAt: -1 }).toArray();
+    const jobs = await collections.jobs().find({ recruiterId: req.user.authUserId }).toArray();
+
+    res.json({ success: true, applications, jobs });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to fetch pipeline" });
+  }
+});
+
 // PATCH /api/applications/:id/withdraw — seeker withdraws
 router.patch("/:id/withdraw", authenticateUser, requireRole("SEEKER"), async (req, res) => {
   try {
@@ -82,7 +118,7 @@ router.get("/job/:jobId", authenticateUser, requireRole("RECRUITER"), async (req
 // PATCH /api/applications/:id/status — recruiter changes status
 router.patch("/:id/status", authenticateUser, requireRole("RECRUITER"), async (req, res) => {
   try {
-    const { status } = req.body; // under_review | shortlisted | offered | rejected | hired
+    const { status } = req.body;
     const application = await collections.applications().findOne({ _id: new ObjectId(req.params.id) });
     if (!application) return res.status(404).json({ success: false, message: "Application not found" });
     if (application.recruiterId !== req.user.authUserId) return res.status(403).json({ success: false, message: "Not your job's application" });
@@ -111,19 +147,5 @@ router.post("/:id/notes", authenticateUser, requireRole("RECRUITER"), async (req
     res.status(500).json({ success: false, message: "Failed to add note" });
   }
 });
-// GET /api/applications/pipeline — all applications across recruiter's jobs, for Kanban view
-router.get("/pipeline", authenticateUser, requireRole("RECRUITER"), async (req, res) => {
-  try {
-    const { jobId } = req.query;
-    const query = { recruiterId: req.user.authUserId };
-    if (jobId) query.jobId = jobId;
 
-    const applications = await collections.applications().find(query).sort({ createdAt: -1 }).toArray();
-    const jobs = await collections.jobs().find({ recruiterId: req.user.authUserId }).toArray();
-
-    res.json({ success: true, applications, jobs });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to fetch pipeline" });
-  }
-});
 module.exports = router;
