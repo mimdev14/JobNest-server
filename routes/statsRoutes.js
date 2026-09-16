@@ -79,6 +79,26 @@ router.get("/admin", authenticateUser, requireRole("ADMIN"), async (req, res) =>
       collections.applications().countDocuments({}),
     ]);
 
+    router.get("/admin", authenticateUser, requireRole("ADMIN"), async (req, res) => {
+  // ... existing admin stats code ...
+});
+
+router.get("/public", async (req, res) => {
+  try {
+    const [activeJobs, companies, seekers, hires] = await Promise.all([
+      collections.jobs().countDocuments({ status: "active" }),
+      collections.companies().countDocuments({ status: "approved" }),
+      collections.users().countDocuments({ role: "SEEKER" }),
+      collections.applications().countDocuments({ status: "hired" }),
+    ]);
+    res.json({ success: true, stats: { activeJobs, companies, seekers, hires } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to fetch stats" });
+  }
+});
+
+module.exports = router;
+
     res.json({
       success: true,
       stats: { totalUsers, seekers, recruiters, companies, activeJobs, totalApplications, revenue: 0 },

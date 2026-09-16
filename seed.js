@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { connectDB } = require("./config/db");
 
-const OWNER_EMAIL = "PUT_A_LOGIN_EMAIL_HERE"; // any account you've registered with
+const OWNER_EMAIL = "fatemaaktermim1031@gmail.com"; // any account you've registered with
 
 const company = {
   name: "NovaTech Solutions",
