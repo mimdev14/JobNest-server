@@ -5,6 +5,7 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
 const { connectDB } = require("../config/db");
+const { handleStripeWebhook } = require("../webhook");
 const authRoutes = require("../routes/authRoutes");
 const userRoutes = require("../routes/userRoutes");
 const companyRoutes = require("../routes/companyRoutes");
@@ -12,8 +13,12 @@ const jobRoutes = require("../routes/jobRoutes");
 const applicationRoutes = require("../routes/applicationRoutes");
 const savedJobRoutes = require("../routes/savedJobRoutes");
 const statsRoutes = require("../routes/statsRoutes");
+const subscriptionRoutes = require("../routes/subscriptionRoutes");
 
 const app = express();
+
+// Webhook must be mounted BEFORE express.json(), with raw body
+app.post("/api/webhook/stripe", express.raw({ type: "application/json" }), handleStripeWebhook);
 
 app.use(express.json());
 app.use(cookieParser());
@@ -35,5 +40,6 @@ app.use("/api/jobs", jobRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/saved-jobs", savedJobRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/subscriptions", subscriptionRoutes);
 
 module.exports = app;
